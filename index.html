@@ -31,6 +31,10 @@
         .quality-selector {
             display: none;
         }
+        .drop-zone-over {
+            border-color: #4f46e5;
+            background-color: #eef2ff;
+        }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex items-center justify-center min-h-screen p-4">
@@ -56,7 +60,7 @@
                         </label>
                         <p class="pl-1">or drag and drop</p>
                     </div>
-                    <p id="file-name" class="text-xs text-gray-500 dark:text-gray-400">MP3, WAV, M4A, FLAC, OGG, AAC, WMA</p>
+                    <p id="file-name" class="text-xs text-gray-500 dark:text-gray-400">MP3, WAV, M4A, FLAC, OGG, AAC</p>
                 </div>
             </div>
         </div>
@@ -71,7 +75,6 @@
                 <option>flac</option>
                 <option>ogg</option>
                 <option>aac</option>
-                <option>wma</option>
             </select>
         </div>
         
@@ -106,16 +109,6 @@
             </select>
         </div>
 
-        <div id="wma-quality-container" class="mb-6 quality-selector">
-            <label for="wma-quality-select" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">3. WMA Quality</label>
-            <select id="wma-quality-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                <option value="96k">96 kbps (Low)</option>
-                <option value="128k" selected>128 kbps (Standard)</option>
-                <option value="160k">160 kbps (Good)</option>
-                <option value="192k">192 kbps (High)</option>
-            </select>
-        </div>
-
         <!-- Convert Button -->
         <div class="mb-6">
             <button id="convert-btn" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 focus:ring-indigo-500 disabled:bg-indigo-400 disabled:cursor-not-allowed">
@@ -144,176 +137,7 @@
         <p class="text-center text-xs text-gray-400 mt-6">Written by Jonas Lund 2025</p>
     </div>
 
-    <script>
-        // --- DOM Element References ---
-        const uploader = document.getElementById('uploader');
-        const fileNameDisplay = document.getElementById('file-name');
-        const formatSelect = document.getElementById('format-select');
-        const convertBtn = document.getElementById('convert-btn');
-        const statusContainer = document.getElementById('status-container');
-        const statusMessage = document.getElementById('status-message');
-        const progressBar = document.getElementById('progress-bar');
-        const downloadContainer = document.getElementById('download-container');
-        const downloadLink = document.getElementById('download-link');
-        
-        // Quality selectors
-        const mp3QualityContainer = document.getElementById('mp3-quality-container');
-        const mp3QualitySelect = document.getElementById('mp3-quality-select');
-        const aacM4aQualityContainer = document.getElementById('aac-m4a-quality-container');
-        const aacM4aQualitySelect = document.getElementById('aac-m4a-quality-select');
-        const oggQualityContainer = document.getElementById('ogg-quality-container');
-        const oggQualitySelect = document.getElementById('ogg-quality-select');
-        const wmaQualityContainer = document.getElementById('wma-quality-container');
-        const wmaQualitySelect = document.getElementById('wma-quality-select');
-
-        let inputFile = null;
-
-        // --- FFmpeg Setup (using newer v0.12 API) ---
-        const { FFmpeg } = window.FFmpeg; // Correctly reference the global FFmpeg object
-        const { fetchFile } = FFmpegUtil;
-        const ffmpeg = new FFmpeg({ log: true });
-
-        // --- UI Logic ---
-        const updateQualitySelectors = () => {
-            const selectedFormat = formatSelect.value;
-            // Hide all quality selectors first
-            mp3QualityContainer.style.display = 'none';
-            aacM4aQualityContainer.style.display = 'none';
-            oggQualityContainer.style.display = 'none';
-            wmaQualityContainer.style.display = 'none';
-
-            // Show the relevant one based on the selected format
-            switch (selectedFormat) {
-                case 'mp3':
-                    mp3QualityContainer.style.display = 'block';
-                    break;
-                case 'aac':
-                case 'm4a':
-                    aacM4aQualityContainer.style.display = 'block';
-                    break;
-                case 'ogg':
-                    oggQualityContainer.style.display = 'block';
-                    break;
-                case 'wma':
-                    wmaQualityContainer.style.display = 'block';
-                    break;
-            }
-        };
-
-        // --- Event Listeners ---
-        uploader.addEventListener('change', (e) => {
-            inputFile = e.target.files[0];
-            if (inputFile) {
-                fileNameDisplay.textContent = inputFile.name;
-            }
-        });
-
-        formatSelect.addEventListener('change', updateQualitySelectors);
-
-        convertBtn.addEventListener('click', async () => {
-            if (!inputFile) {
-                // Using a more user-friendly message display instead of an alert.
-                statusMessage.textContent = "Please select a file first.";
-                statusContainer.classList.remove('hidden');
-                return;
-            }
-            await convertAudio();
-        });
-        
-        // Initial UI setup on page load
-        updateQualitySelectors();
-
-        // --- Core Conversion Logic ---
-        const convertAudio = async () => {
-            // 1. UI Setup for conversion start
-            convertBtn.disabled = true;
-            downloadContainer.classList.add('hidden');
-            statusContainer.classList.remove('hidden');
-            statusMessage.textContent = 'Starting conversion...';
-            progressBar.style.width = '0%';
-            progressBar.style.backgroundColor = '#4f46e5'; // Reset progress bar color
-
-            const outputFormat = formatSelect.value;
-            const originalFileName = inputFile.name.split('.').slice(0, -1).join('.');
-            const inputFileName = inputFile.name;
-            const outputFileName = `${originalFileName}.${outputFormat}`;
-            
-            console.log(`Starting conversion to ${outputFormat}`);
-
-            try {
-                // 2. Load FFmpeg if it's not already loaded
-                if (!ffmpeg.loaded) {
-                    statusMessage.textContent = 'Loading FFmpeg core...';
-                    await ffmpeg.load({
-                        coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/ffmpeg-core.js'
-                    });
-                }
-
-                // 3. Write the uploaded file to FFmpeg's virtual file system
-                statusMessage.textContent = 'Writing file to memory...';
-                await ffmpeg.writeFile(inputFileName, await fetchFile(inputFile));
-
-                // 4. Set up progress tracking to update the progress bar
-                ffmpeg.on('progress', ({ progress }) => {
-                    const p = Math.round(progress * 100);
-                    if (p >= 0 && p <= 100) {
-                         progressBar.style.width = `${p}%`;
-                         statusMessage.textContent = `Converting... ${p}%`;
-                    }
-                });
-
-                // 5. Build the FFmpeg command array with appropriate quality flags
-                console.log('Building and running FFmpeg command...');
-                const command = ['-i', inputFileName];
-                
-                switch (outputFormat) {
-                    case 'mp3':
-                        command.push('-b:a', mp3QualitySelect.value);
-                        break;
-                    case 'aac':
-                    case 'm4a':
-                        command.push('-b:a', aacM4aQualitySelect.value);
-                        break;
-                    case 'ogg':
-                        // OGG uses a quality scale (-q:a) instead of bitrate
-                        command.push('-q:a', oggQualitySelect.value);
-                        break;
-                    case 'wma':
-                        command.push('-b:a', wmaQualitySelect.value);
-                        break;
-                }
-                
-                command.push(outputFileName);
-                
-                await ffmpeg.exec(command);
-                
-                // 6. Finalize progress and read the converted file from the virtual file system
-                progressBar.style.width = '100%';
-                statusMessage.textContent = 'Finalizing...';
-                const data = await ffmpeg.readFile(outputFileName);
-
-                // 7. Create a downloadable link for the converted file
-                const blob = new Blob([data.buffer], { type: `audio/${outputFormat}` });
-                const url = URL.createObjectURL(blob);
-                
-                downloadLink.href = url;
-                downloadLink.download = outputFileName;
-
-                // 8. Update UI to show the download button
-                statusContainer.classList.add('hidden');
-                downloadContainer.classList.remove('hidden');
-                console.log('Conversion successful!');
-
-            } catch (error) {
-                console.error('An error occurred during conversion:', error);
-                statusMessage.textContent = `Error: ${error.message}. Check console.`;
-                progressBar.style.backgroundColor = '#ef4444'; // Red for error
-            } finally {
-                // 9. Re-enable the convert button regardless of success or failure
-                convertBtn.disabled = false;
-            }
-        };
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
 
