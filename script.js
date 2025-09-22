@@ -22,10 +22,14 @@ document.addEventListener('DOMContentLoaded', () => {
     let inputFile = null;
 
     // --- FFmpeg Setup (using newer v0.12 API) ---
+    // The UMD build of @ffmpeg/ffmpeg creates a global `FFmpegWASM` object.
     if (!window.FFmpegWASM || !window.FFmpegUtil) {
-        throw new Error("FFmpeg libraries failed to load. Please check your network connection or browser extensions.");
+        // Display a user-friendly error message on the page.
+        statusMessage.textContent = "Error: Core libraries failed to load. Please check your network or try again.";
+        statusContainer.classList.remove('hidden');
+        throw new Error("FFmpeg libraries failed to load from CDN.");
     }
-    const { FFmpeg } = window.FFmpegWASM; // Correctly reference the global FFmpegWASM object
+    const { FFmpeg } = window.FFmpegWASM;
     const { fetchFile } = window.FFmpegUtil;
     const ffmpeg = new FFmpeg({ log: true });
 
@@ -116,11 +120,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // 2. Load FFmpeg if it's not already loaded
             if (!ffmpeg.loaded) {
                 statusMessage.textContent = 'Loading FFmpeg core...';
-                const baseURL = 'https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/';
+                const coreURL = 'https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/ffmpeg-core.js';
                 await ffmpeg.load({
-                    coreURL: `${baseURL}ffmpeg-core.js`,
-                    wasmURL: `${baseURL}ffmpeg-core.wasm`,
-                    workerURL: `${baseURL}ffmpeg-core.worker.js`
+                    coreURL,
+                    wasmURL: 'https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/ffmpeg-core.wasm',
+                    workerURL: 'https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/ffmpeg-core.worker.js'
                 });
             }
 
