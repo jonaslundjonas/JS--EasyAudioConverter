@@ -22,8 +22,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let inputFile = null;
 
     // --- FFmpeg Setup (using newer v0.12 API) ---
-    const { FFmpeg } = window.FFmpeg; // Correctly reference the global FFmpeg object
-    const { fetchFile } = FFmpegUtil;
+    if (!window.FFmpegWASM || !window.FFmpegUtil) {
+        throw new Error("FFmpeg libraries failed to load. Please check your network connection or browser extensions.");
+    }
+    const { FFmpeg } = window.FFmpegWASM; // Correctly reference the global FFmpegWASM object
+    const { fetchFile } = window.FFmpegUtil;
     const ffmpeg = new FFmpeg({ log: true });
 
     // --- UI Logic ---
@@ -113,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 2. Load FFmpeg if it's not already loaded
             if (!ffmpeg.loaded) {
                 statusMessage.textContent = 'Loading FFmpeg core...';
-                const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core-mt@0.12.6/dist/';
+                const baseURL = 'https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/';
                 await ffmpeg.load({
                     coreURL: `${baseURL}ffmpeg-core.js`,
                     wasmURL: `${baseURL}ffmpeg-core.wasm`,
