@@ -113,11 +113,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // 2. Load FFmpeg if it's not already loaded
             if (!ffmpeg.loaded) {
                 statusMessage.textContent = 'Loading FFmpeg core...';
-                const coreURL = 'https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/ffmpeg-core.js';
+                const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core-mt@0.12.6/dist/';
                 await ffmpeg.load({
-                    coreURL,
-                    wasmURL: 'https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/ffmpeg-core.wasm',
-                    workerURL: 'https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/ffmpeg-core.worker.js'
+                    coreURL: `${baseURL}ffmpeg-core.js`,
+                    wasmURL: `${baseURL}ffmpeg-core.wasm`,
+                    workerURL: `${baseURL}ffmpeg-core.worker.js`
                 });
             }
 
